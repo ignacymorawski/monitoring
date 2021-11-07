@@ -42,6 +42,7 @@ library(ggrepel)
 #library(extrafont)
 #library(mail)
 library(stringi)
+library(gridExtra)
 
 
 ### UZUPEŁNIANIE DANYCH NC I WSE ###
@@ -134,6 +135,32 @@ for (i in seq(length(lnce2))){
 
 
 save(nc1,nc2,file=here("/home/rstudio/PulsBiznesu/monitoring/data/nc.RData"))
+
+
+
+
+load("/home/rstudio/PulsBiznesu/monitoring/data/sector.RData")
+lsec<-tail(sector$date,1)
+lsec2<-format(seq(as.Date(lsec)+1,Sys.Date(),by="day"))
+
+for (i in seq(length(lsec2))){
+u<-paste0("https://www.gpw.pl/price-archive?fetch=0&type=1&instrument=&date=",format(as.Date(lsec2[i]),"%d-%m-%Y"),"&show_x=Show+results")
+u2<-read_html(u)
+u3<-html_table(u2)
+
+  if(length(u3)>1){
+    u4<-as_tibble(u3[[2]])
+    u5<-t(u4$`Closing price`)
+    u6<-as_tibble(cbind(lsec2[i],u5))
+    colnames(u6)<-c("date",u4$Name %>% unlist)
+    u7<-u6 %>% mutate_at(c(1),~as.Date(.)) %>% mutate_at(c(-1),~as.numeric(gsub(",","",.))) %>% select(c(1),all_of(ind$tickery))
+    colnames(u7)<-c("date",ind$indeksy[as.numeric(na.omit(match(colnames(u7),ind$tickery)))])
+    sector<-bind_rows(sector,u7)
+  }
+}
+
+save(ind,sector,file="/home/rstudio/PulsBiznesu/monitoring/data/sector.RData")
+
 
 ### Ładowanie bieżących danych GPW i New Connect
 
@@ -256,7 +283,122 @@ today<-as.Date(now2)
 <br></br>
 <br/><br/>
 
-#### 1. Czym najmocniej handluje się na rynku głównym GPW 
+
+#### 1. Zmiany indeksów na warszawskiej giełdzie
+
+```{r,echo=FALSE,results='asis'}
+cat(paste0("- Ostatnia aktualizacja: ",Sys.time()+3600))
+```
+
+
+```{r ,echo=FALSE,warning=FALSE,fig.width=11,fig.height=8}
+
+
+urlbankier<-"https://www.bankier.pl/gielda/notowania/indeksy-gpw"
+secbankier<-read_html(urlbankier) %>% html_table() 
+secbankier2<-secbankier[[1]] %>% 
+  as_tibble() %>% 
+  select(c(1,2)) %>% 
+  mutate_at(c(2),~as.numeric(gsub(intToUtf8(160),"",gsub(",",".",.)))) %>% 
+  `colnames<-`(c("Name","Value")) %>% 
+  filter(Name %in% ind$tickery) %>% 
+  slice(match(ind$tickery,Name)) %>% 
+  mutate(Name=ind$indeksy)
+
+secbankier3<-secbankier2 %>% 
+  pivot_wider(
+    names_from="Name",
+    values_from="Value"
+  ) %>% 
+  add_column(date=Sys.Date(),.before="WIG")
+
+sector2<-tail(sector,50) %>% add_row(secbankier3)
+
+sectora<-sector2 %>% 
+  pivot_longer(
+    cols=c(2:18),
+    names_to="Sector",
+    values_to="Value"
+  ) %>% 
+  pivot_wider(
+    names_from="date",
+    values_from="Value"
+  ) %>% 
+  mutate(ch1=100*.[[52]]/.[[51]]-100) %>% 
+  mutate(ch7=100*.[[52]]/.[[47]]-100) %>%
+  mutate(last=.[[52]]) %>%
+  mutate(max=select(.,2:52) %>% apply(.,1,function(x) max(x))) %>% 
+  select(Sector,ch1,ch7,last,max) %>% 
+  mutate_at(c("Sector"),~factor(.,levels=unique(.))) %>% 
+  mutate(ldate=Sys.Date()) %>% 
+  mutate(sign1=ifelse(ch1<0,"","+")) %>% 
+  mutate(sign2=ifelse(ch7<0,"","+"))
+  
+  sectora$color1<-rgb(0,0,0,maxColorValue = 255)
+  sectora$color2<-rgb(0,0,0,maxColorValue = 255)
+  sectora$color1[sectora$ch1<0]<-rgb(102-sectora$ch1[sectora$ch1<0]*20,0,0,maxColorValue = 255)
+  sectora$color1[sectora$ch1>=0]<-rgb(0,102+sectora$ch1[sectora$ch1>=0]*20,0,maxColorValue = 255)
+  sectora$color2[sectora$ch7<0]<-rgb(102-sectora$ch7[sectora$ch7<0]*20,0,0,maxColorValue = 255)
+  sectora$color2[sectora$ch7>=0]<-rgb(0,102+sectora$ch7[sectora$ch7>=0]*20,0,maxColorValue = 255)
+
+sector3<-sector2 %>% 
+  pivot_longer(
+    cols=c(2:18),
+    names_to="Sector",
+    values_to="Value"
+  ) %>% 
+   left_join(sectora,by="Sector") %>% 
+  mutate_at(c("Sector"),~factor(.,levels=unique(.)))
+
+if (prod(sector3$ch1)==0){
+  sector3$color<-sector3$color2
+} else {
+  sector3$color<-sector3$color1
+}
+
+c<-1
+for (i in ind$indeksy[c(1,3:17)]){
+p1<-sector3 %>% filter(Sector==i)
+clr1<-p1$color[1]
+
+bp<-ggplot(p1,aes(x=date,y=Value))+
+  geom_line(size=1,color="white")+
+  geom_point(data=p1[3,],mapping=aes(ldate,last),size=2,color="white")+
+  geom_text(data=p1[3,],mapping=aes(date,max*1.04,label=paste0("1D: ",sign1,round(ch1,1),"%")),size=4,color="white",hjust=0,vjust=1,fontface="bold")+
+  geom_text(data=p1[3,],mapping=aes(ldate,max*1.04,label=paste0("7D: ",sign1,round(ch7,1),"%")),size=4,color="white",hjust=1,vjust=1,fontface="bold")+
+  theme_minimal()+
+  theme(panel.grid=element_blank())+
+  theme(plot.background = element_rect(fill=clr1,color="gray"))+
+  theme(panel.background = element_rect(fill=clr1,color=clr1))+
+  theme(axis.text=element_text(color="white"))+
+  theme(plot.title=element_text(size=15,hjust=0.5,color="white"))+
+  theme(plot.margin = margin(0.7,1,0.7,0,"cm"))+
+  xlab("")+
+  ylab("")+
+  labs(
+    title=i
+  )+
+  scale_x_date(breaks=c(p1$date[1],p1$date[51]),labels=c(p1$date[1],p1$date[51]))
+
+assign(paste0("bp",c),bp)
+c<-c+1
+}
+
+plotCombine<-arrangeGrob(bp1,bp2,bp3,bp4,bp5,bp6,bp7,bp8,bp,bp10,bp11,bp12,bp13,bp14,bp15,bp16, nrow = 4)
+
+
+grid.draw(plotCombine)
+
+
+
+```
+<br></br>
+<br/><br/>
+<br/><br/>
+
+
+
+#### 2. Czym najmocniej handluje się na rynku głównym GPW 
 
 
 ```{r ,echo=FALSE,warning=FALSE,fig.width=11,fig.height=8}
@@ -292,7 +434,7 @@ bp<-ggplot(table, aes(area = obroty, fill = color, label=label)) +
   theme(plot.subtitle = element_text(color = "gray23",size=14,margin=margin(t=0,r=0,b=25,l=0,unit="pt"), family="Publico Text"))+
   theme(legend.position = "none")+
   theme(plot.background = element_rect(fill="#FBEEE1",color="#FBEEE1"))+
-  labs(title=paste0("",godzina2),
+  labs(title="",
        subtitle="wielkość pola jest proporcjonalna do obrotów generowanych na spółce",
        caption="źródło: Puls Biznesu")
 
@@ -314,7 +456,7 @@ print(bp)
 
 
 
-#### 2. Czym najmocniej handluje się na New Connect
+#### 3. Czym najmocniej handluje się na New Connect
 
 ```{r ,echo=FALSE,warning=FALSE,fig.width=11,fig.height=8}
 
@@ -419,7 +561,7 @@ turn0<-bind_rows(turn.plus,turn.minus) %>% select(c(1,2,3,6,7,8)) %>%
 <br/><br/>
 
 
-#### 3. Które spółki przyciągają wyjątkową uwagę na rynku głównym GPW
+#### 4. Które spółki przyciągają wyjątkową uwagę na rynku głównym GPW
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -553,7 +695,7 @@ print(bp3)
 
 
 
-#### 4. Które spółki przyciągają wyjątkową uwagę na New Connect
+#### 5. Które spółki przyciągają wyjątkową uwagę na New Connect
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -635,7 +777,7 @@ print(bp3b)
 
 
 
-#### 5. Które spółki z rynku głównego są najbliżej rocznego maksimum
+#### 6. Które spółki z rynku głównego są najbliżej rocznego maksimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -747,7 +889,7 @@ bp4<-ggplot(data=n3a,aes(x=date,y=value,group=spolka))+
   #scale_fill_manual(values = cols)+
   facet_wrap(~spolka,scales="free",ncol=5)+
   theme(strip.background = element_rect(fill="transparent",color="transparent"))+
-  theme(strip.text = element_text(size=11, face="bold",color="gray23", family="Publico Text"))+
+  theme(strip.text = element_text(size=9,color="gray23", family="Publico Text"))+
   theme(axis.ticks=element_blank())+
   theme(axis.text.y=element_text(margin = margin(t=0,r=20,b=0,l=0,unit="pt"), family="Publico Text"))+
   theme(axis.text.x=element_text(angle=45,hjust=1, family="Publico Text"))+
@@ -777,7 +919,7 @@ print(bp4)
 
 
 
-#### 6. Które spółki z New Connect są najbliżej rocznego maksimum
+#### 7. Które spółki z New Connect są najbliżej rocznego maksimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -886,7 +1028,7 @@ bp4<-ggplot(data=nx3a,aes(x=date,y=value,group=spolka))+
   #scale_fill_manual(values = cols)+
   facet_wrap(~spolka,scales="free",ncol=5)+
   theme(strip.background = element_rect(fill="transparent",color="transparent"))+
-  theme(strip.text = element_text(size=11, face="bold",color="gray23", family="Publico Text"))+
+  theme(strip.text = element_text(size=9,color="gray23", family="Publico Text"))+
   theme(axis.ticks=element_blank())+
   theme(axis.text.y=element_text(margin = margin(t=0,r=20,b=0,l=0,unit="pt"), family="Publico Text"))+
   theme(axis.text.x=element_text(angle=45,hjust=1, family="Publico Text"))+
@@ -916,7 +1058,7 @@ print(bp4)
 
 
 
-#### 7. Które spółki z rynku głównego są najbliżej rocznego minimum
+#### 8. Które spółki z rynku głównego są najbliżej rocznego minimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 bp5<-ggplot(data=n3b,aes(x=date,y=value,group=spolka))+
@@ -924,7 +1066,7 @@ bp5<-ggplot(data=n3b,aes(x=date,y=value,group=spolka))+
   #scale_fill_manual(values = cols)+
   facet_wrap(~spolka,scales="free",ncol=5)+
   theme(strip.background = element_rect(fill="transparent",color="transparent"))+
-  theme(strip.text = element_text(size=11, face="bold",color="gray23", family="Publico Text"))+
+  theme(strip.text = element_text(size=9,color="gray23", family="Publico Text"))+
   theme(axis.ticks=element_blank())+
   theme(axis.text.y=element_text(margin = margin(t=0,r=20,b=0,l=0,unit="pt"), family="Publico Text"))+
   theme(axis.text.x=element_text(angle=45,hjust=1, family="Publico Text"))+
@@ -955,7 +1097,7 @@ print(bp5)
 
 
 
-#### 8. Które spółki z New Connect są najbliżej rocznego minimum
+#### 9. Które spółki z New Connect są najbliżej rocznego minimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 bp5<-ggplot(data=nx3b,aes(x=date,y=value,group=spolka))+
@@ -963,7 +1105,7 @@ bp5<-ggplot(data=nx3b,aes(x=date,y=value,group=spolka))+
   #scale_fill_manual(values = cols)+
   facet_wrap(~spolka,scales="free",ncol=5)+
   theme(strip.background = element_rect(fill="transparent",color="transparent"))+
-  theme(strip.text = element_text(size=11, face="bold",color="gray23", family="Publico Text"))+
+  theme(strip.text = element_text(size=9,color="gray23", family="Publico Text"))+
   theme(axis.ticks=element_blank())+
   theme(axis.text.y=element_text(margin = margin(t=0,r=20,b=0,l=0,unit="pt"), family="Publico Text"))+
   theme(axis.text.x=element_text(angle=45,hjust=1, family="Publico Text"))+
