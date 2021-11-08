@@ -43,6 +43,7 @@ library(ggrepel)
 #library(mail)
 library(stringi)
 library(gridExtra)
+library(grid)
 
 
 ### UZUPEŁNIANIE DANYCH NC I WSE ###
