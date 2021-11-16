@@ -353,7 +353,7 @@ sector3<-sector2 %>%
    left_join(sectora,by="Sector") %>% 
   mutate_at(c("Sector"),~factor(.,levels=unique(.)))
 
-if (prod(sector3$ch1)==0){
+if (sum(sector3$ch1)==0){
   sector3$color<-sector3$color2
 } else {
   sector3$color<-sector3$color1
