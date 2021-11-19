@@ -339,10 +339,10 @@ sectora<-sector2 %>%
   
   sectora$color1<-rgb(0,0,0,maxColorValue = 255)
   sectora$color2<-rgb(0,0,0,maxColorValue = 255)
-  sectora$color1[sectora$ch1<0]<-rgb(102-sectora$ch1[sectora$ch1<0]*15,0,0,maxColorValue = 255)
-  sectora$color1[sectora$ch1>=0]<-rgb(0,102+sectora$ch1[sectora$ch1>=0]*15,0,maxColorValue = 255)
-  sectora$color2[sectora$ch7<0]<-rgb(102-sectora$ch7[sectora$ch7<0]*15,0,0,maxColorValue = 255)
-  sectora$color2[sectora$ch7>=0]<-rgb(0,102+sectora$ch7[sectora$ch7>=0]*15,0,maxColorValue = 255)
+  sectora$color1[sectora$ch1<0]<-rgb(102-sectora$ch1[sectora$ch1<0]*10,0,0,maxColorValue = 255)
+  sectora$color1[sectora$ch1>=0]<-rgb(0,102+sectora$ch1[sectora$ch1>=0]*10,0,maxColorValue = 255)
+  sectora$color2[sectora$ch7<0]<-rgb(102-sectora$ch7[sectora$ch7<0]*10,0,0,maxColorValue = 255)
+  sectora$color2[sectora$ch7>=0]<-rgb(0,102+sectora$ch7[sectora$ch7>=0]*10,0,maxColorValue = 255)
 
 sector3<-sector2 %>% 
   pivot_longer(
