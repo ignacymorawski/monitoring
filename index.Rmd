@@ -287,8 +287,6 @@ today<-as.Date(now2)
 <br/><br/>
 
 
-#### 1. Zmiany indeksów na warszawskiej giełdzie
-
 ```{r,echo=FALSE,results='asis'}
 cat(paste0("- Ostatnia aktualizacja: ",Sys.time()+3600))
 ```
@@ -319,7 +317,7 @@ sector2<-tail(sector,50) %>% add_row(secbankier3)
 
 sectora<-sector2 %>% 
   pivot_longer(
-    cols=c(2:18),
+    cols=c(2:17),
     names_to="Sector",
     values_to="Value"
   ) %>% 
@@ -346,7 +344,7 @@ sectora<-sector2 %>%
 
 sector3<-sector2 %>% 
   pivot_longer(
-    cols=c(2:18),
+    cols=c(2:17),
     names_to="Sector",
     values_to="Value"
   ) %>% 
@@ -387,10 +385,10 @@ assign(paste0("bp",c),bp)
 c<-c+1
 }
 
-plotCombine<-arrangeGrob(bp1,bp2,bp3,bp4,bp5,bp6,bp7,bp8,bp,bp10,bp11,bp12,bp13,bp14,bp15,bp16, nrow = 4)
+#plotCombine<-arrangeGrob(bp1,bp2,bp3,bp4,bp5,bp6,bp7,bp8,bp,bp10,bp11,bp12,bp13,bp14,bp15,bp16, nrow = 4)
 
 
-grid.draw(plotCombine)
+#grid.draw(plotCombine)
 
 
 
@@ -401,7 +399,7 @@ grid.draw(plotCombine)
 
 
 
-#### 2. Czym najmocniej handluje się na rynku głównym GPW 
+#### 1. Czym najmocniej handluje się na rynku głównym GPW 
 
 
 ```{r ,echo=FALSE,warning=FALSE,fig.width=11,fig.height=8}
@@ -459,7 +457,7 @@ print(bp)
 
 
 
-#### 3. Czym najmocniej handluje się na New Connect
+#### 2. Czym najmocniej handluje się na New Connect
 
 ```{r ,echo=FALSE,warning=FALSE,fig.width=11,fig.height=8}
 
@@ -564,7 +562,7 @@ turn0<-bind_rows(turn.plus,turn.minus) %>% select(c(1,2,3,6,7,8)) %>%
 <br/><br/>
 
 
-#### 4. Które spółki przyciągają wyjątkową uwagę na rynku głównym GPW
+#### 3. Które spółki przyciągają wyjątkową uwagę na rynku głównym GPW
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -698,7 +696,7 @@ print(bp3)
 
 
 
-#### 5. Które spółki przyciągają wyjątkową uwagę na New Connect
+#### 4. Które spółki przyciągają wyjątkową uwagę na New Connect
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -780,7 +778,7 @@ print(bp3b)
 
 
 
-#### 6. Które spółki z rynku głównego są najbliżej rocznego maksimum
+#### 5. Które spółki z rynku głównego są najbliżej rocznego maksimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -922,7 +920,7 @@ print(bp4)
 
 
 
-#### 7. Które spółki z New Connect są najbliżej rocznego maksimum
+#### 6. Które spółki z New Connect są najbliżej rocznego maksimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 
@@ -1061,7 +1059,7 @@ print(bp4)
 
 
 
-#### 8. Które spółki z rynku głównego są najbliżej rocznego minimum
+#### 7. Które spółki z rynku głównego są najbliżej rocznego minimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 bp5<-ggplot(data=n3b,aes(x=date,y=value,group=spolka))+
@@ -1100,7 +1098,7 @@ print(bp5)
 
 
 
-#### 9. Które spółki z New Connect są najbliżej rocznego minimum
+#### 8. Które spółki z New Connect są najbliżej rocznego minimum
 ```{r, echo=FALSE, warning=FALSE,error=FALSE,message=FALSE,fig.width=11,fig.height=8}
 
 bp5<-ggplot(data=nx3b,aes(x=date,y=value,group=spolka))+
